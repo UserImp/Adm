@@ -20,8 +20,9 @@ body{background:var(--bg-main);display:flex;flex-direction:column;justify-conten
 .sw-time{padding:2px 7px;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text-secondary);cursor:pointer;user-select:none;-webkit-user-select:none;white-space:nowrap}
 .sw-box.running .sw-time{color:#2ecc71}
 .sw-box.paused .sw-time{color:#f39c12}
-.sw-reset{background:transparent;border:none;border-left:1px solid var(--border-subtle);padding:2px 6px;font-size:11px;font-weight:800;color:var(--text-muted);cursor:pointer;transition:.15s}
+.sw-reset{background:transparent;border:none;border-left:1px solid var(--border-subtle);padding:2px 6px;font-size:11px;font-weight:800;color:var(--text-muted);cursor:pointer;transition:.15s;user-select:none;-webkit-user-select:none}
 .sw-reset:hover{color:var(--btn-red-text);background:rgba(255,107,107,.1)}
+.sw-reset.confirm-ready{background:#6b1d2f;color:#fff}
 .reports-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .btn-rep{border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;transition:.2s;user-select:none;-webkit-user-select:none}
 .btn-rep-minus{background:var(--btn-purple-bg);border:1px solid var(--btn-purple-border);color:var(--text-secondary)}
@@ -153,7 +154,7 @@ body{background:var(--bg-main);display:flex;flex-direction:column;justify-conten
 <span class="reports-count" id="reportsCount">0</span>
 <div class="sw-box" id="swBox" title="Нажми на время для паузы / продолжения">
 <span class="sw-time" id="swTime" onclick="toggleStopwatch()">00:00</span>
-<button type="button" class="sw-reset" onclick="resetStopwatch()" title="Сбросить секундомер">↺</button>
+<button type="button" class="sw-reset" id="btnResetSw" onclick="resetStopwatch()" title="Сбросить секундомер">↺</button>
 </div>
 </div>
 <div class="reports-actions">
@@ -218,7 +219,7 @@ const faqItems=[
 {title:'Правила битвы за фургон',text:'Заполню позже!'},
 {title:'RP термины и их описание',text:'Заполню позже! ПОЗЖЕ!'}
 ];
-let activeTabIndex=null,managedActionIndex=null,managedFolderId=null,deleteConfirmArmed=false,folderDeleteArmed=false,reportsClearArmed=false,reportsClearTimer=null,reportsPulseTimer=null,addMode='main',newFolderColor='default',editFolderColor='default';
+let activeTabIndex=null,managedActionIndex=null,managedFolderId=null,deleteConfirmArmed=false,folderDeleteArmed=false,reportsClearArmed=false,reportsClearTimer=null,reportsPulseTimer=null,swResetArmed=false,swResetTimer=null,addMode='main',newFolderColor='default',editFolderColor='default';
 let reportsCount=parseInt(localStorage.getItem('calc_reports_count'),10)||0;
 let swStart=parseInt(localStorage.getItem('calc_sw_start'),10)||0;
 let swElapsed=parseInt(localStorage.getItem('calc_sw_elapsed'),10)||0;
@@ -236,8 +237,9 @@ function formatStopwatch(ms){const totalSec=Math.floor(ms/1000);const days=Math.
 function saveStopwatch(){localStorage.setItem('calc_sw_start',swStart);localStorage.setItem('calc_sw_elapsed',swElapsed)}
 function updateStopwatchUI(){const box=document.getElementById('swBox'),timeEl=document.getElementById('swTime');const nowElapsed=swElapsed+(swStart?Date.now()-swStart:0);timeEl.textContent=formatStopwatch(nowElapsed);box.classList.toggle('running',swStart>0);box.classList.toggle('paused',swStart===0&&swElapsed>0)}
 function startStopwatch(){if(swStart>0)return;swStart=Date.now();saveStopwatch();updateStopwatchUI();if(!swInterval)swInterval=setInterval(updateStopwatchUI,500)}
-function toggleStopwatch(){if(swStart>0){swElapsed+=Date.now()-swStart;swStart=0;clearInterval(swInterval);swInterval=null}else{swStart=Date.now();if(!swInterval)swInterval=setInterval(updateStopwatchUI,500)}saveStopwatch();updateStopwatchUI()}
-function resetStopwatch(){swStart=0;swElapsed=0;clearInterval(swInterval);swInterval=null;saveStopwatch();updateStopwatchUI()}
+function toggleStopwatch(){if(swStart>0){swElapsed+=Date.now()-swStart;swStart=0;clearInterval(swInterval);swInterval=null}else{swStart=Date.now();if(!swInterval)swInterval=setInterval(updateStopwatchUI,500)}resetSwBtn();saveStopwatch();updateStopwatchUI()}
+function resetSwBtn(){swResetArmed=false;clearTimeout(swResetTimer);const btn=document.getElementById('btnResetSw');if(btn){btn.textContent='↺';btn.classList.remove('confirm-ready')}}
+function resetStopwatch(){if(swStart===0&&swElapsed===0)return;const btn=document.getElementById('btnResetSw');if(!swResetArmed){swResetArmed=true;btn.textContent='Точно?';btn.classList.add('confirm-ready');clearTimeout(swResetTimer);swResetTimer=setTimeout(resetSwBtn,2500);return}swStart=0;swElapsed=0;clearInterval(swInterval);swInterval=null;saveStopwatch();updateStopwatchUI();resetSwBtn()}
 function initStopwatch(){updateStopwatchUI();if(swStart>0&&!swInterval)swInterval=setInterval(updateStopwatchUI,500)}
 function updateReportsUI(pulse=false){document.getElementById('reportsCount').textContent=reportsCount;localStorage.setItem('calc_reports_count',reportsCount);if(pulse){const bar=document.getElementById('reportsBar');bar.classList.add('pulse');clearTimeout(reportsPulseTimer);reportsPulseTimer=setTimeout(()=>bar.classList.remove('pulse'),500)}}
 function incrementReports(){reportsCount++;resetClearReportsBtn();updateReportsUI(true)}
