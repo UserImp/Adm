@@ -211,6 +211,8 @@ let reportsCount=parseInt(localStorage.getItem('calc_reports_count'),10)||0;
 const folderColors=['default','red','amber','blue','green','pink','cyan','indigo','lime','coral','violet','slate'];
 const copyTimers={},actionCopyTimers={},openFolders=JSON.parse(localStorage.getItem('calc_open_folders'))||{},collapsedSections=JSON.parse(localStorage.getItem('calc_collapsed_sections'))||{};
 let tabsData=JSON.parse(localStorage.getItem('calc_top_tabs'))||[{name:'Для спека.',command:''},{name:'Для выхода из спека.',command:''}];
+tabsData.forEach(t=>{if(['Плашка 1','Плашка 2','Для спека.','Для выхода из спека.'].includes(t.name)&&!t.command)t.name='Укажи команду'});
+localStorage.setItem('calc_top_tabs',JSON.stringify(tabsData));
 let foldersData=JSON.parse(localStorage.getItem('calc_folders'))||[];
 let rawActions=JSON.parse(localStorage.getItem('calc_custom_actions'))||[];
 const customActions=rawActions.map(item=>typeof item==='string'?{name:item,command:item,block:'main',folderId:null}:{name:item.name,command:item.command,block:item.block||'main',folderId:item.folderId||null});
