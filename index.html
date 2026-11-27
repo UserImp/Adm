@@ -9,11 +9,19 @@
 *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
 body{background:var(--bg-main);display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;padding:12px;color:var(--text-primary)}
 .calculator-card{background:var(--bg-card);border:2px solid var(--border-neon);border-radius:18px;box-shadow:0 0 28px rgba(140,37,211,.35),inset 0 0 15px rgba(140,37,211,.1);width:100%;max-width:460px;padding:16px;position:relative;display:flex;flex-direction:column}
-.reports-bar{background:var(--bg-result);border:1px solid var(--border-subtle);border-radius:10px;padding:7px 10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:border-color .25s,box-shadow .25s}
+.reports-bar{background:var(--bg-result);border:1px solid var(--border-subtle);border-radius:10px;padding:7px 10px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:6px;transition:border-color .25s,box-shadow .25s}
 .reports-bar.pulse{border-color:#2ecc71;box-shadow:0 0 12px rgba(46,204,113,.25)}
-.reports-info{display:flex;align-items:center;gap:8px;min-width:0}
+.reports-info{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap}
 .reports-label{font-size:11px;font-weight:800;letter-spacing:.4px;color:var(--text-muted);text-transform:uppercase;white-space:nowrap}
-.reports-count{background:var(--bg-surface);border:1px solid var(--border-neon);border-radius:6px;padding:2px 9px;font-size:14px;font-weight:800;color:var(--text-primary);min-width:34px;text-align:center;box-shadow:inset 0 0 8px rgba(140,37,211,.2)}
+.reports-count{background:var(--bg-surface);border:1px solid var(--border-neon);border-radius:6px;padding:2px 8px;font-size:14px;font-weight:800;color:var(--text-primary);min-width:30px;text-align:center;box-shadow:inset 0 0 8px rgba(140,37,211,.2)}
+.sw-box{display:inline-flex;align-items:center;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:6px;overflow:hidden;transition:.2s}
+.sw-box.running{border-color:#2ecc71;box-shadow:0 0 8px rgba(46,204,113,.2)}
+.sw-box.paused{border-color:#e67e22}
+.sw-time{padding:2px 7px;font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text-secondary);cursor:pointer;user-select:none;-webkit-user-select:none;white-space:nowrap}
+.sw-box.running .sw-time{color:#2ecc71}
+.sw-box.paused .sw-time{color:#f39c12}
+.sw-reset{background:transparent;border:none;border-left:1px solid var(--border-subtle);padding:2px 6px;font-size:11px;font-weight:800;color:var(--text-muted);cursor:pointer;transition:.15s}
+.sw-reset:hover{color:var(--btn-red-text);background:rgba(255,107,107,.1)}
 .reports-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .btn-rep{border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;transition:.2s;user-select:none;-webkit-user-select:none}
 .btn-rep-minus{background:var(--btn-purple-bg);border:1px solid var(--btn-purple-border);color:var(--text-secondary)}
@@ -143,6 +151,10 @@ body{background:var(--bg-main);display:flex;flex-direction:column;justify-conten
 <div class="reports-info">
 <span class="reports-label">Мои репорты:</span>
 <span class="reports-count" id="reportsCount">0</span>
+<div class="sw-box" id="swBox" title="Нажми на время для паузы / продолжения">
+<span class="sw-time" id="swTime" onclick="toggleStopwatch()">00:00</span>
+<button type="button" class="sw-reset" onclick="resetStopwatch()" title="Сбросить секундомер">↺</button>
+</div>
 </div>
 <div class="reports-actions">
 <button type="button" class="btn-rep btn-rep-minus" onclick="decrementReports()">−1</button>
@@ -208,6 +220,9 @@ const faqItems=[
 ];
 let activeTabIndex=null,managedActionIndex=null,managedFolderId=null,deleteConfirmArmed=false,folderDeleteArmed=false,reportsClearArmed=false,reportsClearTimer=null,reportsPulseTimer=null,addMode='main',newFolderColor='default',editFolderColor='default';
 let reportsCount=parseInt(localStorage.getItem('calc_reports_count'),10)||0;
+let swStart=parseInt(localStorage.getItem('calc_sw_start'),10)||0;
+let swElapsed=parseInt(localStorage.getItem('calc_sw_elapsed'),10)||0;
+let swInterval=null;
 const folderColors=['default','red','amber','blue','green','pink','cyan','indigo','lime','coral','violet','slate'];
 const copyTimers={},actionCopyTimers={},openFolders=JSON.parse(localStorage.getItem('calc_open_folders'))||{},collapsedSections=JSON.parse(localStorage.getItem('calc_collapsed_sections'))||{};
 let tabsData=JSON.parse(localStorage.getItem('calc_top_tabs'))||[{name:'Для спека.',command:''},{name:'Для выхода из спека.',command:''}];
@@ -216,6 +231,14 @@ localStorage.setItem('calc_top_tabs',JSON.stringify(tabsData));
 let foldersData=JSON.parse(localStorage.getItem('calc_folders'))||[];
 let rawActions=JSON.parse(localStorage.getItem('calc_custom_actions'))||[];
 const customActions=rawActions.map(item=>typeof item==='string'?{name:item,command:item,block:'main',folderId:null}:{name:item.name,command:item.command,block:item.block||'main',folderId:item.folderId||null});
+function pad2(n){return n<10?'0'+n:n}
+function formatStopwatch(ms){const totalSec=Math.floor(ms/1000);const days=Math.floor(totalSec/86400);const hours=Math.floor((totalSec%86400)/3600);const mins=Math.floor((totalSec%3600)/60);const secs=totalSec%60;if(days>0)return `${days}д ${pad2(hours)}:${pad2(mins)}:${pad2(secs)}`;if(hours>0)return `${pad2(hours)}:${pad2(mins)}:${pad2(secs)}`;return `${pad2(mins)}:${pad2(secs)}`}
+function saveStopwatch(){localStorage.setItem('calc_sw_start',swStart);localStorage.setItem('calc_sw_elapsed',swElapsed)}
+function updateStopwatchUI(){const box=document.getElementById('swBox'),timeEl=document.getElementById('swTime');const nowElapsed=swElapsed+(swStart?Date.now()-swStart:0);timeEl.textContent=formatStopwatch(nowElapsed);box.classList.toggle('running',swStart>0);box.classList.toggle('paused',swStart===0&&swElapsed>0)}
+function startStopwatch(){if(swStart>0)return;swStart=Date.now();saveStopwatch();updateStopwatchUI();if(!swInterval)swInterval=setInterval(updateStopwatchUI,500)}
+function toggleStopwatch(){if(swStart>0){swElapsed+=Date.now()-swStart;swStart=0;clearInterval(swInterval);swInterval=null}else{swStart=Date.now();if(!swInterval)swInterval=setInterval(updateStopwatchUI,500)}saveStopwatch();updateStopwatchUI()}
+function resetStopwatch(){swStart=0;swElapsed=0;clearInterval(swInterval);swInterval=null;saveStopwatch();updateStopwatchUI()}
+function initStopwatch(){updateStopwatchUI();if(swStart>0&&!swInterval)swInterval=setInterval(updateStopwatchUI,500)}
 function updateReportsUI(pulse=false){document.getElementById('reportsCount').textContent=reportsCount;localStorage.setItem('calc_reports_count',reportsCount);if(pulse){const bar=document.getElementById('reportsBar');bar.classList.add('pulse');clearTimeout(reportsPulseTimer);reportsPulseTimer=setTimeout(()=>bar.classList.remove('pulse'),500)}}
 function incrementReports(){reportsCount++;resetClearReportsBtn();updateReportsUI(true)}
 function decrementReports(){if(reportsCount>0){reportsCount--;updateReportsUI(false)}resetClearReportsBtn()}
@@ -249,10 +272,11 @@ function saveEditedFolder(){if(!managedFolderId)return;const val=document.getEle
 function handleDeleteClick(){if(managedActionIndex===null)return;const delBtn=document.getElementById('btnDeleteAction');if(!deleteConfirmArmed){deleteConfirmArmed=true;delBtn.textContent='Точно удалить?';delBtn.classList.add('confirm-ready');return}customActions.splice(managedActionIndex,1);localStorage.setItem('calc_custom_actions',JSON.stringify(customActions));closeAllManageMenus()}
 function handleFolderDeleteClick(){if(!managedFolderId)return;const delBtn=document.getElementById('btnDeleteFolder');if(!folderDeleteArmed){folderDeleteArmed=true;delBtn.textContent='Точно удалить?';delBtn.classList.add('confirm-ready');return}foldersData=foldersData.filter(f=>f.id!==managedFolderId);delete openFolders[managedFolderId];saveOpenFolders();for(let i=customActions.length-1;i>=0;i--)if(customActions[i].folderId===managedFolderId)customActions.splice(i,1);localStorage.setItem('calc_folders',JSON.stringify(foldersData));localStorage.setItem('calc_custom_actions',JSON.stringify(customActions));closeAllManageMenus()}
 function handleBottomSubmit(){if(addMode==='newfolder'){const fIn=document.getElementById('newFolderTitle'),title=fIn.value;if(title==='')return;const id='f_'+Date.now();foldersData.push({id,title,color:newFolderColor});localStorage.setItem('calc_folders',JSON.stringify(foldersData));openFolders[id]=true;saveOpenFolders();collapsedSections.folders=false;localStorage.setItem('calc_collapsed_sections',JSON.stringify(collapsedSections));applySectionStates();fIn.value='';renderAll();selectMode('infolder');document.getElementById('targetFolderSelect').value=id;return}const nIn=document.getElementById('newActionName'),cIn=document.getElementById('newActionCmd'),n=nIn.value,c=cIn.value;if(n===''&&c==='')return;if(addMode==='infolder'){const fid=document.getElementById('targetFolderSelect').value;if(!fid)return;customActions.push({name:n===''?c:n,command:c===''?n:c,block:'folder',folderId:fid});openFolders[fid]=true;saveOpenFolders();collapsedSections.folders=false}else{customActions.push({name:n===''?c:n,command:c===''?n:c,block:addMode,folderId:null});collapsedSections[addMode]=false}localStorage.setItem('calc_collapsed_sections',JSON.stringify(collapsedSections));applySectionStates();localStorage.setItem('calc_custom_actions',JSON.stringify(customActions));nIn.value='';cIn.value='';renderAll()}
-function copyActionChip(chipEl,i,cmdText,block){writeToClipboard(cmdText);if(block==='main')incrementReports();clearTimeout(actionCopyTimers[i]);chipEl.dataset.copyText=chipEl.offsetWidth<95?'✓':'Скопировано!';chipEl.classList.add('copied');actionCopyTimers[i]=setTimeout(()=>{chipEl.classList.remove('copied')},1200)}
+function copyActionChip(chipEl,i,cmdText,block){writeToClipboard(cmdText);if(block==='main'){incrementReports();startStopwatch()}clearTimeout(actionCopyTimers[i]);chipEl.dataset.copyText=chipEl.offsetWidth<95?'✓':'Скопировано!';chipEl.classList.add('copied');actionCopyTimers[i]=setTimeout(()=>{chipEl.classList.remove('copied')},1200)}
 function exportBackup(){const payload=JSON.stringify({tabs:tabsData,folders:foldersData,actions:customActions,reports:reportsCount});writeToClipboard(payload);const btn=document.getElementById('btnExportData');btn.classList.add('ok');btn.textContent='Скопировано!';setTimeout(()=>{btn.classList.remove('ok');btn.textContent='Экспорт (копировать)'},1500)}
 function importBackup(){const txt=document.getElementById('importTextarea').value.trim(),btn=document.getElementById('btnApplyImport');if(!txt)return;try{const d=JSON.parse(txt);if(Array.isArray(d.tabs)&&d.tabs.length>=2){tabsData=d.tabs;localStorage.setItem('calc_top_tabs',JSON.stringify(tabsData))}if(Array.isArray(d.folders)){foldersData=d.folders;localStorage.setItem('calc_folders',JSON.stringify(foldersData))}if(Array.isArray(d.actions)){customActions.length=0;d.actions.forEach(x=>customActions.push(x));localStorage.setItem('calc_custom_actions',JSON.stringify(customActions))}if(typeof d.reports==='number'){reportsCount=Math.max(0,d.reports);updateReportsUI(false)}renderTabs();renderAll();document.getElementById('importTextarea').value='';btn.textContent='Готово!';setTimeout(()=>{btn.textContent='Загрузить данные';document.getElementById('importArea').classList.remove('open')},1200)}catch(e){btn.textContent='Ошибка формата!';setTimeout(()=>{btn.textContent='Загрузить данные'},1500)}}
 const bottomBox=document.querySelector('.add-action-wrapper');bottomBox.addEventListener('pointerdown',()=>bottomBox.classList.add('glow'));bottomBox.addEventListener('focusin',()=>bottomBox.classList.add('glow'));document.addEventListener('pointerdown',e=>{if(!bottomBox.contains(e.target))bottomBox.classList.remove('glow')});
+initStopwatch();
 updateReportsUI(false);
 applySectionStates();
 renderFaq();
