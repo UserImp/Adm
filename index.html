@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор</title>
+<style>
+:root{--bg-main:#0e0a16;--bg-card:#161021;--bg-surface:#211931;--bg-result:#1d152c;--border-neon:#8c25d3;--border-subtle:#35294d;--border-result:#302447;--btn-purple-bg:#2a1e40;--btn-purple-border:#48356b;--btn-purple-hover:#34264f;--btn-red-bg:#2a141c;--btn-red-border:#59222f;--btn-red-text:#ff6b6b;--text-primary:#fff;--text-secondary:#e8e2f0;--text-muted:#9e95ae;--text-placeholder:#706682}
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{background:var(--bg-main);display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;padding:12px;color:var(--text-primary)}
+.calculator-card{background:var(--bg-card);border:2px solid var(--border-neon);border-radius:18px;box-shadow:0 0 28px rgba(140,37,211,.35),inset 0 0 15px rgba(140,37,211,.1);width:100%;max-width:460px;padding:16px;position:relative;display:flex;flex-direction:column}
+.top-tabs{position:sticky;top:0;z-index:20;background:var(--bg-card);padding:12px 0;margin:-12px 0 4px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tab-pill{background:var(--btn-purple-bg);border:1px solid var(--btn-purple-border);border-radius:9px;padding:10px 8px;color:var(--text-secondary);font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;transition:.2s;user-select:none;-webkit-user-select:none;min-width:0}
+.tab-pill:hover{background:var(--btn-purple-hover);border-color:var(--border-neon)}
+.tab-pill.active-edit{border-color:var(--border-neon);box-shadow:0 0 12px rgba(140,37,211,.35)}
+.tab-pill.copied{border-color:#2ecc71;background:#162e23;color:#2ecc71}
+.tab-title{overflow:hidden;text-overflow:ellipsis;white-space:pre}
+.config-menu,.action-manage-menu,.folder-manage-menu{display:none;background:var(--bg-result);border:1px solid var(--border-neon);border-radius:10px;padding:12px;margin-bottom:12px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.config-menu.open,.action-manage-menu.open,.folder-manage-menu.open{display:block}
+.config-field{margin-bottom:10px}
+.config-label{display:block;font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:4px}
+.config-input,.config-select{width:100%;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:7px;padding:8px 10px;color:var(--text-primary);font-size:13px;outline:none;transition:.2s}
+.config-input::placeholder{color:var(--text-placeholder)}
+.config-input:focus,.config-select:focus{border-color:var(--border-neon)}
+.config-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:10px;flex-wrap:wrap}
+.action-menu-footer{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:10px}
+.action-menu-right{display:flex;gap:6px}
+.btn-small{border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid transparent;transition:.2s}
+.btn-save{background:var(--border-neon);color:var(--text-primary)}
+.btn-save:hover{filter:brightness(1.15)}
+.btn-close{background:var(--btn-red-bg);border-color:var(--btn-red-border);color:var(--btn-red-text)}
+.btn-close.confirm-ready{background:#6b1d2f;border-color:#ff6b6b;color:#fff}
+.btn-cancel{background:var(--btn-purple-bg);border-color:var(--btn-purple-border);color:var(--text-secondary)}
+.section-block{margin-bottom:8px}
+.section-block.hidden{display:none}
+.section-divider{border-top:1px solid var(--border-subtle);padding-top:10px;margin-top:10px}
+.section-header{display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:800;letter-spacing:.7px;color:var(--text-muted);margin-bottom:6px;cursor:pointer;user-select:none;-webkit-user-select:none;padding:2px 0;transition:color .2s}
+.section-header:hover{color:var(--text-secondary)}
+.section-header::after{content:'▲';font-size:8px;opacity:.7;transition:transform .2s}
+.section-block.collapsed .section-header{margin-bottom:0}
+.section-block.collapsed .section-header::after{transform:rotate(180deg)}
+.section-block.collapsed .actions-list,.section-block.collapsed .vertical-list{display:none}
+.empty-hint{text-align:center;font-size:12px;color:var(--text-placeholder);padding:14px 8px}
+.actions-list{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:5px;width:100%}
+.action-chip{position:relative;overflow:hidden;flex-grow:1;text-align:center;background:var(--bg-result);border:1px solid var(--border-result);border-radius:6px;padding:5px 9px;color:var(--text-secondary);font-size:12px;font-weight:600;cursor:pointer;transition:background .2s,border-color .2s;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;max-width:100%;white-space:pre-wrap;word-break:break-word;line-height:1.25}
+.action-chip:hover{background:var(--btn-purple-bg);border-color:var(--border-neon);color:var(--text-primary)}
+.action-chip.active-manage{border-color:var(--border-neon);box-shadow:0 0 10px rgba(140,37,211,.35)}
+.action-chip.copied{border-color:#2ecc71;background:#162e23;color:transparent}
+.action-chip.copied::after{content:attr(data-copy-text);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#2ecc71;font-size:11px;font-weight:700;white-space:nowrap}
+.vertical-list{display:flex;flex-direction:column;gap:6px;width:100%}
+.folder-card{--fc-bg:var(--bg-result);--fc-border:var(--border-result);--fc-hover:#251b38;--fc-accent:#6b3fa0;background:var(--fc-bg);border:1px solid var(--fc-border);border-radius:8px;overflow:hidden;transition:.2s}
+.folder-card.open,.folder-card.active-manage{border-color:var(--fc-accent)}
+.folder-card.c-red{--fc-bg:#27131a;--fc-border:#5e2334;--fc-hover:#311620;--fc-accent:#9e384e}
+.folder-card.c-amber{--fc-bg:#271c12;--fc-border:#5e3e1e;--fc-hover:#302216;--fc-accent:#9e6426}
+.folder-card.c-blue{--fc-bg:#131d2e;--fc-border:#233d66;--fc-hover:#172338;--fc-accent:#3362b0}
+.folder-card.c-green{--fc-bg:#122620;--fc-border:#1f5242;--fc-hover:#163028;--fc-accent:#228c5e}
+.folder-card.c-pink{--fc-bg:#281326;--fc-border:#61235b;--fc-hover:#321730;--fc-accent:#9e388d}
+.folder-card.c-cyan{--fc-bg:#112329;--fc-border:#1f4c59;--fc-hover:#152c33;--fc-accent:#24839c}
+.folder-card.c-indigo{--fc-bg:#18162e;--fc-border:#322e66;--fc-hover:#1f1c3b;--fc-accent:#524cb0}
+.folder-card.c-lime{--fc-bg:#1c2412;--fc-border:#3d5221;--fc-hover:#242e17;--fc-accent:#668c2e}
+.folder-card.c-coral{--fc-bg:#291713;--fc-border:#613125;--fc-hover:#331d18;--fc-accent:#a34d38}
+.folder-card.c-violet{--fc-bg:#20142b;--fc-border:#492866;--fc-hover:#281936;--fc-accent:#7c42b0}
+.folder-card.c-slate{--fc-bg:#1b1d24;--fc-border:#383d4d;--fc-hover:#232630;--fc-accent:#606880}
+.folder-header{position:relative;padding:7px 26px;font-size:12px;font-weight:700;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:.2s;white-space:pre-wrap;word-break:break-word}
+.folder-header:hover{background:var(--fc-hover);color:var(--text-primary)}
+.folder-arrow{position:absolute;right:10px;font-size:10px;color:var(--text-muted);transition:.2s}
+.folder-card.open .folder-arrow{transform:rotate(180deg);color:var(--text-primary)}
+.folder-body{display:none;padding:6px 8px 8px;border-top:1px solid var(--fc-border);background:rgba(14,10,22,.45);flex-wrap:wrap;gap:5px}
+.folder-card.open .folder-body{display:flex}
+.folder-card .action-chip:hover{background:var(--fc-hover);border-color:var(--fc-border);color:var(--text-primary)}
+.folder-card .action-chip.copied{border-color:#2ecc71;background:#162e23;color:transparent}
+.folder-card .action-chip.copied::after{color:#2ecc71}
+.folder-empty{font-size:11px;color:var(--text-placeholder)}
+.color-picker-row{display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding:4px 6px}
+.color-dot{width:17px;height:17px;border-radius:50%;border:2px solid rgba(255,255,255,.18);cursor:pointer;transition:.15s;flex-shrink:0}
+.color-dot.selected{transform:scale(1.16);border-color:#fff;box-shadow:0 0 6px rgba(255,255,255,.35)}
+.color-dot[data-color="default"]{background:#48356b}
+.color-dot[data-color="red"]{background:#b8324d}
+.color-dot[data-color="amber"]{background:#b86c20}
+.color-dot[data-color="blue"]{background:#2a65c2}
+.color-dot[data-color="green"]{background:#1b9661}
+.color-dot[data-color="pink"]{background:#b5329f}
+.color-dot[data-color="cyan"]{background:#1f89a6}
+.color-dot[data-color="indigo"]{background:#4b45b5}
+.color-dot[data-color="lime"]{background:#6b9627}
+.color-dot[data-color="coral"]{background:#ba5036}
+.color-dot[data-color="violet"]{background:#7b3cb5}
+.color-dot[data-color="slate"]{background:#59627a}
+.add-action-wrapper{background:rgba(33,25,49,.75);border:1px solid var(--border-subtle);border-radius:8px;padding:4px;margin:8px auto 0;width:96%;transition:.2s}
+.add-action-wrapper.glow{width:100%;background:var(--bg-surface);border-color:var(--border-neon)}
+.add-action-row{display:flex;align-items:center;gap:4px}
+.add-folder-select{display:none;width:100%;background:var(--bg-result);border:1px solid var(--border-subtle);border-radius:5px;padding:3px 6px;color:var(--text-primary);font-size:11px;margin-top:4px;outline:none}
+.add-folder-select.visible{display:block}
+.add-action-bottom{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(53,41,77,.6)}
+.block-selector{display:flex;gap:3px;flex-wrap:wrap}
+.block-opt{background:var(--bg-result);border:1px solid var(--border-subtle);border-radius:5px;padding:2px 6px;color:var(--text-muted);font-size:10px;font-weight:700;cursor:pointer;transition:.2s}
+.add-action-wrapper.glow .block-opt.selected{background:var(--btn-purple-bg);border-color:var(--border-neon);color:var(--text-primary)}
+.add-action-input{min-width:0;background:transparent;border:none;padding:3px 6px;color:var(--text-primary);font-size:12px;outline:none}
+.add-action-input.name-part{flex:.85;border-right:1px solid var(--border-subtle)}
+.add-action-input.cmd-part{flex:1.15}
+.add-action-input.full-part{flex:1}
+.add-action-input::placeholder{color:var(--text-placeholder);font-size:11px}
+.btn-add-action{flex-shrink:0;background:var(--btn-purple-bg);border:1px solid var(--btn-purple-border);border-radius:5px;padding:3px 9px;color:var(--text-secondary);font-size:10px;font-weight:700;cursor:pointer;transition:.2s;white-space:nowrap}
+.btn-add-action:hover{background:var(--btn-purple-hover);border-color:var(--border-neon)}
+.bottom-spacer{margin-top:6px}
+.faq-card{position:relative;z-index:25;width:100%;max-width:460px;margin-top:10px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:14px;transition:border-color .2s}
+.faq-card.open{border-color:var(--border-neon)}
+.faq-header{position:relative;padding:9px 28px;font-size:12px;font-weight:800;letter-spacing:.6px;color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;border-radius:13px;transition:.2s}
+.faq-header:hover{background:var(--bg-surface);color:var(--text-primary)}
+.faq-card.open .faq-header{color:var(--text-primary);border-bottom:1px solid var(--border-subtle);border-radius:13px 13px 0 0}
+.faq-card.open.open-up .faq-header{border-bottom:none;border-top:1px solid var(--border-subtle);border-radius:0 0 13px 13px}
+.faq-arrow{position:absolute;right:12px;font-size:10px;transition:transform .2s}
+.faq-card.open .faq-arrow{transform:rotate(180deg)}
+.faq-body{display:none;padding:10px 12px;flex-direction:column;gap:8px}
+.faq-card.open .faq-body{display:flex}
+.faq-card.open.open-up .faq-body{position:absolute;bottom:100%;left:-1px;right:-1px;background:var(--bg-card);border:1px solid var(--border-neon);border-bottom:none;border-radius:14px 14px 0 0;box-shadow:0 -10px 26px rgba(0,0,0,.65);max-height:70vh;overflow-y:auto}
+.faq-sub{background:var(--bg-result);border:1px solid var(--border-result);border-radius:8px;overflow:hidden}
+.faq-sub-head{position:relative;padding:7px 26px 7px 10px;font-size:11px;font-weight:700;color:var(--text-secondary);cursor:pointer;user-select:none;transition:.2s}
+.faq-sub-head:hover{background:var(--btn-purple-bg);color:var(--text-primary)}
+.faq-sub-head::after{content:'▼';position:absolute;right:10px;font-size:9px;color:var(--text-muted);transition:transform .2s}
+.faq-sub.open .faq-sub-head::after{transform:rotate(180deg)}
+.faq-sub-text{display:none;padding:8px 10px;border-top:1px solid var(--border-subtle);font-size:11px;line-height:1.45;color:var(--text-muted);white-space:pre-wrap;word-break:break-word}
+.faq-sub-text b{color:var(--text-primary);font-weight:700}
+.faq-sub.open .faq-sub-text{display:block}
+.backup-box{background:var(--bg-result);border:1px solid var(--border-result);border-radius:8px;padding:8px 10px}
+.backup-title{font-size:10px;font-weight:800;letter-spacing:.6px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase}
+.backup-btns{display:flex;gap:6px}
+.backup-btn{flex:1;background:var(--btn-purple-bg);border:1px solid var(--btn-purple-border);border-radius:6px;padding:6px 8px;color:var(--text-secondary);font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:.2s}
+.backup-btn:hover{background:var(--btn-purple-hover);border-color:var(--border-neon);color:var(--text-primary)}
+.backup-btn.ok{border-color:#2ecc71;background:#162e23;color:#2ecc71}
+.backup-btn.err{border-color:var(--btn-red-border);background:var(--btn-red-bg);color:var(--btn-red-text)}
+.import-area{display:none;margin-top:8px;flex-direction:column;gap:6px}
+.import-area.open{display:flex}
+.import-input{width:100%;min-height:56px;resize:vertical;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:6px;padding:6px 8px;color:var(--text-primary);font-size:11px;outline:none}
+.import-input:focus{border-color:var(--border-neon)}
+</style>
+</head>
+<body>
+<div class="calculator-card">
+<div class="top-tabs">
+<div class="tab-pill" id="tab-0" onclick="handleTabClick(0)" oncontextmenu="handleRightClick(event,0)"><span class="tab-title" id="tab-title-0">Плашка 1</span></div>
+<div class="tab-pill" id="tab-1" onclick="handleTabClick(1)" oncontextmenu="handleRightClick(event,1)"><span class="tab-title" id="tab-title-1">Плашка 2</span></div>
+</div>
+<div class="config-menu" id="configMenu">
+<div class="config-field"><label class="config-label" for="inputName">Название кнопки</label><input type="text" id="inputName" class="config-input"></div>
+<div class="config-field"><label class="config-label" for="inputCommand">Команда</label><input type="text" id="inputCommand" class="config-input"></div>
+<div class="config-actions"><button type="button" class="btn-small btn-close" onclick="closeMenu()">Закрыть</button><button type="button" class="btn-small btn-save" onclick="saveTabConfig()">Сохранить</button></div>
+</div>
+<div class="action-manage-menu" id="actionManageMenu">
+<div class="config-field"><label class="config-label" for="editActionNameInput">Название кнопки</label><input type="text" id="editActionNameInput" class="config-input"></div>
+<div class="config-field"><label class="config-label" for="editActionCmdInput">Команда</label><input type="text" id="editActionCmdInput" class="config-input"></div>
+<div class="config-field" style="margin-bottom:0"><label class="config-label" for="editActionTargetSelect">Куда поместить</label><select id="editActionTargetSelect" class="config-select"></select></div>
+<div class="action-menu-footer"><button type="button" class="btn-small btn-close" id="btnDeleteAction" onclick="handleDeleteClick()">Удалить</button><div class="action-menu-right"><button type="button" class="btn-small btn-cancel" onclick="closeAllManageMenus()">Закрыть</button><button type="button" class="btn-small btn-save" onclick="saveEditedAction()">Сохранить</button></div></div>
+</div>
+<div class="folder-manage-menu" id="folderManageMenu">
+<div class="config-field"><label class="config-label" for="editFolderNameInput">Название папки</label><input type="text" id="editFolderNameInput" class="config-input"></div>
+<div class="config-field" style="margin-bottom:0"><label class="config-label">Цвет папки</label><div class="color-picker-row" id="editFolderColors"></div></div>
+<div class="action-menu-footer"><button type="button" class="btn-small btn-close" id="btnDeleteFolder" onclick="handleFolderDeleteClick()">Удалить папку</button><div class="action-menu-right"><button type="button" class="btn-small btn-cancel" onclick="closeAllManageMenus()">Закрыть</button><button type="button" class="btn-small btn-save" onclick="saveEditedFolder()">Сохранить</button></div></div>
+</div>
+<div class="section-block section-main" id="sec-main"><div class="section-header" onclick="toggleSection('main')">Основные команды</div><div class="actions-list" id="actionsListMain"></div></div>
+<div class="section-block section-divider" id="sec-nrp"><div class="section-header" onclick="toggleSection('nrp')">NRP-чат</div><div class="actions-list" id="actionsListNrp"></div></div>
+<div class="section-block section-divider" id="sec-folders"><div class="section-header" onclick="toggleSection('folders')">Наказания</div><div class="vertical-list" id="actionsListFolders"></div></div>
+<div class="section-block section-divider" id="sec-daily"><div class="section-header" onclick="toggleSection('daily')">Повседневные команды</div><div class="actions-list" id="actionsListDaily"></div></div>
+<div class="bottom-spacer"></div>
+<div class="add-action-wrapper">
+<div class="add-action-row" id="cmdInputsRow"><input type="text" id="newActionName" class="add-action-input name-part" placeholder="Название..." onkeydown="if(event.key==='Enter')document.getElementById('newActionCmd').focus()"><input type="text" id="newActionCmd" class="add-action-input cmd-part" placeholder="Команда..." onkeydown="if(event.key==='Enter')handleBottomSubmit()"></div>
+<div id="folderInputWrap" style="display:none"><div class="add-action-row"><input type="text" id="newFolderTitle" class="add-action-input full-part" placeholder="Название новой папки..." onkeydown="if(event.key==='Enter')handleBottomSubmit()"></div><div class="color-picker-row" id="newFolderColors"></div></div>
+<select id="targetFolderSelect" class="add-folder-select"></select>
+<div class="add-action-bottom"><div class="block-selector"><button type="button" class="block-opt selected" id="opt-main" onclick="selectMode('main')">Основные</button><button type="button" class="block-opt" id="opt-nrp" onclick="selectMode('nrp')">NRP-чат</button><button type="button" class="block-opt" id="opt-infolder" onclick="selectMode('infolder')">В папку</button><button type="button" class="block-opt" id="opt-newfolder" onclick="selectMode('newfolder')">+ Папка</button><button type="button" class="block-opt" id="opt-daily" onclick="selectMode('daily')">Повседневные</button></div><button type="button" class="btn-add-action" id="btnBottomSubmit" onclick="handleBottomSubmit()">Сохранить</button></div>
+</div>
+</div>
+<div class="faq-card" id="faqCard">
+<div class="faq-header" onclick="toggleFaq()"><span>FAQ</span><span class="faq-arrow">▼</span></div>
+<div class="faq-body">
+<div id="faqCustomList" class="vertical-list"></div>
+<div class="backup-box">
+<div class="backup-title">Резервная копия / Перенос</div>
+<div class="backup-btns"><button type="button" class="backup-btn" id="btnExportData" onclick="exportBackup()">Экспорт (копировать)</button><button type="button" class="backup-btn" onclick="document.getElementById('importArea').classList.toggle('open')">Импорт (вставить)</button></div>
+<div class="import-area" id="importArea"><textarea id="importTextarea" class="import-input" placeholder="Вставьте сюда скопированный код..."></textarea><button type="button" class="btn-small btn-save" id="btnApplyImport" onclick="importBackup()">Загрузить данные</button></div>
+</div>
+</div>
+</div>
+<script>
+const faqItems=[
+{title:'Общие правила игры',text:'1. <b>ОБЩИЕ ПОЛОЖЕНИЯ:</b>\n1.1 Создавая аккаунт в игре Grand Mobile...'},
+{title:'Правила жалоб',text:'Чтобы добавить новый подраздел, просто скопируйте эту строку в массиве faqItems.'},
+{title:'Правила нахождения в Зелёной Зоне',text:'Сюда вы можете вписать любой текст, памятку или правила прямо в коде.'},
+{title:'Правила для Лидеров и их Заместителей',text:'Сюда вы можете вписать любой текст, памятку или правила прямо в коде.'},
+{title:'Правила государственных организаций',text:'Сюда вы можете вписать любой текст, памятку или правила прямо в коде.'},
+{title:'Правила государственной волны и департамента',text:'Сюда вы можете вписать любой текст, памятку или правила прямо в коде.'},
+{title:'Правила семейных мероприятий',text:'Сюда вы можете вписать любой текст, памятку или правила прямо в коде.'},
+{title:'Правила для ОПГ',text:'Сюда вы можете вписать любой текст, памятку или правила прямо в коде.'},
+{title:'Правила войны за бизнес',text:'Сюда вы можете вписать любой текст, памятку или правила прямо в коде.'},
+{title:'Правила битвы за фургон',text:'Сюда вы можете вписать любой текст, памятку или правила прямо в коде.'},
+{title:'RP термины и их описание',text:'Сюда вы можете вписать любой текст, памятку или правила прямо в коде.'}
+];
+let activeTabIndex=null,managedActionIndex=null,managedFolderId=null,deleteConfirmArmed=false,folderDeleteArmed=false,addMode='main',newFolderColor='default',editFolderColor='default';
+const folderColors=['default','red','amber','blue','green','pink','cyan','indigo','lime','coral','violet','slate'];
+const copyTimers={},actionCopyTimers={},openFolders=JSON.parse(localStorage.getItem('calc_open_folders'))||{},collapsedSections=JSON.parse(localStorage.getItem('calc_collapsed_sections'))||{};
+let tabsData=JSON.parse(localStorage.getItem('calc_top_tabs'))||[{name:'Плашка 1',command:''},{name:'Плашка 2',command:''}];
+let foldersData=JSON.parse(localStorage.getItem('calc_folders'))||[];
+let rawActions=JSON.parse(localStorage.getItem('calc_custom_actions'))||[];
+const customActions=rawActions.map(item=>typeof item==='string'?{name:item,command:item,block:'main',folderId:null}:{name:item.name,command:item.command,block:item.block||'main',folderId:item.folderId||null});
+function writeToClipboard(t){if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t)}else{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');document.body.removeChild(a)}}
+function saveOpenFolders(){localStorage.setItem('calc_open_folders',JSON.stringify(openFolders))}
+function toggleSection(k){collapsedSections[k]=!collapsedSections[k];localStorage.setItem('calc_collapsed_sections',JSON.stringify(collapsedSections));document.getElementById('sec-'+k).classList.toggle('collapsed',!!collapsedSections[k])}
+function applySectionStates(){['main','nrp','folders','daily'].forEach(k=>document.getElementById('sec-'+k).classList.toggle('collapsed',!!collapsedSections[k]))}
+function renderFaq(){const el=document.getElementById('faqCustomList');el.innerHTML='';faqItems.forEach(item=>{const box=document.createElement('div');box.className='faq-sub';const h=document.createElement('div');h.className='faq-sub-head';h.textContent=item.title;h.onclick=()=>box.classList.toggle('open');const t=document.createElement('div');t.className='faq-sub-text';t.innerHTML=item.text;box.appendChild(h);box.appendChild(t);el.appendChild(box)})}
+function toggleFaq(){const c=document.getElementById('faqCard');if(c.classList.contains('open')){c.classList.remove('open','open-up');return}const spaceBelow=window.innerHeight-c.getBoundingClientRect().bottom;c.classList.toggle('open-up',spaceBelow<260);c.classList.add('open')}
+function renderColorDots(containerId,activeColor,onSelect){const el=document.getElementById(containerId);el.innerHTML='';folderColors.forEach(c=>{const d=document.createElement('div');d.className='color-dot'+(c===activeColor?' selected':'');d.dataset.color=c;d.onclick=()=>{onSelect(c);renderColorDots(containerId,c,onSelect)};el.appendChild(d)})}
+function selectMode(m){addMode=m;['main','nrp','infolder','newfolder','daily'].forEach(k=>document.getElementById('opt-'+k).classList.toggle('selected',k===m));document.getElementById('cmdInputsRow').style.display=m==='newfolder'?'none':'flex';document.getElementById('folderInputWrap').style.display=m==='newfolder'?'block':'none';if(m==='newfolder')renderColorDots('newFolderColors',newFolderColor,c=>{newFolderColor=c});document.getElementById('targetFolderSelect').classList.toggle('visible',m==='infolder');document.getElementById('btnBottomSubmit').textContent=m==='newfolder'?'Создать':'Сохранить'}
+function updateFolderSelects(){const sel=document.getElementById('targetFolderSelect'),cur=sel.value;sel.innerHTML='';if(!foldersData.length){const o=document.createElement('option');o.value='';o.textContent='Сначала создайте папку (+ Папка)';sel.appendChild(o)}else{foldersData.forEach(f=>{const o=document.createElement('option');o.value=f.id;o.textContent='Папка: '+f.title;sel.appendChild(o)});if(cur&&foldersData.some(f=>f.id===cur))sel.value=cur}}
+function renderTabs(){tabsData.forEach((tab,i)=>{document.getElementById(`tab-title-${i}`).textContent=tab.name===''?`Плашка ${i+1}`:tab.name})}
+function handleTabClick(i){const tab=tabsData[i];if(tab.command===''){openMenu(i);return}copyCommand(i,tab)}
+function handleRightClick(e,i){e.preventDefault();openMenu(i)}
+function openMenu(i){closeAllManageMenus();activeTabIndex=i;document.querySelectorAll('.tab-pill').forEach(el=>el.classList.remove('active-edit'));document.getElementById(`tab-${i}`).classList.add('active-edit');const tab=tabsData[i];document.getElementById('inputName').value=tab.name;document.getElementById('inputCommand').value=tab.command;document.getElementById('configMenu').classList.add('open');document.getElementById('inputName').focus()}
+function closeMenu(){activeTabIndex=null;document.querySelectorAll('.tab-pill').forEach(el=>el.classList.remove('active-edit'));document.getElementById('configMenu').classList.remove('open')}
+function saveTabConfig(){if(activeTabIndex===null)return;const n=document.getElementById('inputName').value,c=document.getElementById('inputCommand').value;tabsData[activeTabIndex]={name:n===''?`Плашка ${activeTabIndex+1}`:n,command:c};localStorage.setItem('calc_top_tabs',JSON.stringify(tabsData));renderTabs();closeMenu()}
+function copyCommand(i,tab){writeToClipboard(tab.command);const tabEl=document.getElementById(`tab-${i}`),titleEl=document.getElementById(`tab-title-${i}`);clearTimeout(copyTimers[i]);tabEl.classList.add('copied');titleEl.textContent='Скопировано!';copyTimers[i]=setTimeout(()=>{tabEl.classList.remove('copied');titleEl.textContent=tab.name===''?`Плашка ${i+1}`:tab.name},1200)}
+function attachLongPress(el,onLong,onShort){let t=null,lp=false;const s=()=>{lp=false;t=setTimeout(()=>{lp=true;onLong()},600)},c=()=>clearTimeout(t);el.addEventListener('touchstart',s,{passive:true});el.addEventListener('touchend',c);el.addEventListener('touchmove',c);el.addEventListener('mousedown',e=>{if(e.button===0)s()});el.addEventListener('mouseup',c);el.addEventListener('mouseleave',c);el.onclick=e=>{if(lp){e.preventDefault();lp=false;return}onShort(e)};el.oncontextmenu=e=>{e.preventDefault();onLong()}}
+function createChipElement(item,i){const chip=document.createElement('div');chip.className='action-chip';if(managedActionIndex===i)chip.classList.add('active-manage');const label=item.name===''?item.command:item.name;chip.textContent=label;attachLongPress(chip,()=>openActionManageMenu(i),()=>copyActionChip(chip,i,item.command));return chip}
+function renderAll(){updateFolderSelects();const savedOpen=JSON.parse(localStorage.getItem('calc_open_folders'));if(savedOpen)Object.assign(openFolders,savedOpen);const mainEl=document.getElementById('actionsListMain'),nrpEl=document.getElementById('actionsListNrp'),foldersEl=document.getElementById('actionsListFolders'),dailyEl=document.getElementById('actionsListDaily');mainEl.innerHTML='';nrpEl.innerHTML='';foldersEl.innerHTML='';dailyEl.innerHTML='';let mainCount=0,nrpCount=0,dailyCount=0;customActions.forEach((item,i)=>{if(item.block==='main'){mainEl.appendChild(createChipElement(item,i));mainCount++}else if(item.block==='nrp'){nrpEl.appendChild(createChipElement(item,i));nrpCount++}else if(item.block==='daily'){dailyEl.appendChild(createChipElement(item,i));dailyCount++}});foldersData.forEach(folder=>{const card=document.createElement('div');const colClass=folder.color&&folder.color!=='default'?' c-'+folder.color:'';card.className='folder-card'+colClass+(openFolders[folder.id]?' open':'')+(managedFolderId===folder.id?' active-manage':'');const header=document.createElement('div');header.className='folder-header';const tSpan=document.createElement('span');tSpan.textContent=folder.title;const aSpan=document.createElement('span');aSpan.className='folder-arrow';aSpan.textContent='▼';header.appendChild(tSpan);header.appendChild(aSpan);attachLongPress(header,()=>openFolderManageMenu(folder.id),()=>{openFolders[folder.id]=!openFolders[folder.id];saveOpenFolders();card.classList.toggle('open')});const body=document.createElement('div');body.className='folder-body';let count=0;customActions.forEach((item,i)=>{if(item.block==='folder'&&item.folderId===folder.id){body.appendChild(createChipElement(item,i));count++}});if(!count){const emp=document.createElement('span');emp.className='folder-empty';emp.textContent='Пусто';body.appendChild(emp)}card.appendChild(header);card.appendChild(body);foldersEl.appendChild(card)});mainEl.parentElement.classList.toggle('hidden',mainCount===0);nrpEl.parentElement.classList.toggle('hidden',nrpCount===0);foldersEl.parentElement.classList.toggle('hidden',foldersData.length===0);dailyEl.parentElement.classList.toggle('hidden',dailyCount===0);const oldHint=document.getElementById('emptyStateHint');if(oldHint)oldHint.remove();if(mainCount===0&&nrpCount===0&&foldersData.length===0&&dailyCount===0){const hint=document.createElement('div');hint.id='emptyStateHint';hint.className='empty-hint';hint.textContent='Добавьте первую команду или папку ниже';mainEl.parentElement.insertAdjacentElement('afterend',hint)}}
+function openActionManageMenu(i){closeMenu();closeAllManageMenus(false);managedActionIndex=i;deleteConfirmArmed=false;const delBtn=document.getElementById('btnDeleteAction');delBtn.textContent='Удалить';delBtn.classList.remove('confirm-ready');const item=customActions[i];document.getElementById('editActionNameInput').value=item.name;document.getElementById('editActionCmdInput').value=item.command;const sel=document.getElementById('editActionTargetSelect');sel.innerHTML='<option value="main">Основные</option><option value="nrp">NRP-чат</option><option value="daily">Повседневные команды</option>';foldersData.forEach(f=>{const o=document.createElement('option');o.value='folder:'+f.id;o.textContent='Папка: '+f.title;sel.appendChild(o)});sel.value=item.block==='folder'&&item.folderId?'folder:'+item.folderId:item.block;document.getElementById('actionManageMenu').classList.add('open');renderAll()}
+function openFolderManageMenu(fid){closeMenu();closeAllManageMenus(false);managedFolderId=fid;folderDeleteArmed=false;const delBtn=document.getElementById('btnDeleteFolder');delBtn.textContent='Удалить папку';delBtn.classList.remove('confirm-ready');const f=foldersData.find(x=>x.id===fid);if(!f)return;document.getElementById('editFolderNameInput').value=f.title;editFolderColor=f.color||'default';renderColorDots('editFolderColors',editFolderColor,c=>{editFolderColor=c});document.getElementById('folderManageMenu').classList.add('open');renderAll()}
+function closeAllManageMenus(rerender=true){managedActionIndex=null;managedFolderId=null;deleteConfirmArmed=false;folderDeleteArmed=false;document.getElementById('actionManageMenu').classList.remove('open');document.getElementById('folderManageMenu').classList.remove('open');if(rerender)renderAll()}
+function saveEditedAction(){if(managedActionIndex===null)return;const n=document.getElementById('editActionNameInput').value,c=document.getElementById('editActionCmdInput').value,t=document.getElementById('editActionTargetSelect').value;if(c===''&&n==='')return;let b='main',fid=null;if(t.startsWith('folder:')){b='folder';fid=t.slice(7);openFolders[fid]=true;saveOpenFolders()}else{b=t}customActions[managedActionIndex]={name:n===''?c:n,command:c,block:b,folderId:fid};localStorage.setItem('calc_custom_actions',JSON.stringify(customActions));closeAllManageMenus()}
+function saveEditedFolder(){if(!managedFolderId)return;const val=document.getElementById('editFolderNameInput').value;if(val==='')return;const f=foldersData.find(x=>x.id===managedFolderId);if(f){f.title=val;f.color=editFolderColor}localStorage.setItem('calc_folders',JSON.stringify(foldersData));closeAllManageMenus()}
+function handleDeleteClick(){if(managedActionIndex===null)return;const delBtn=document.getElementById('btnDeleteAction');if(!deleteConfirmArmed){deleteConfirmArmed=true;delBtn.textContent='Точно удалить?';delBtn.classList.add('confirm-ready');return}customActions.splice(managedActionIndex,1);localStorage.setItem('calc_custom_actions',JSON.stringify(customActions));closeAllManageMenus()}
+function handleFolderDeleteClick(){if(!managedFolderId)return;const delBtn=document.getElementById('btnDeleteFolder');if(!folderDeleteArmed){folderDeleteArmed=true;delBtn.textContent='Точно удалить?';delBtn.classList.add('confirm-ready');return}foldersData=foldersData.filter(f=>f.id!==managedFolderId);delete openFolders[managedFolderId];saveOpenFolders();for(let i=customActions.length-1;i>=0;i--)if(customActions[i].folderId===managedFolderId)customActions.splice(i,1);localStorage.setItem('calc_folders',JSON.stringify(foldersData));localStorage.setItem('calc_custom_actions',JSON.stringify(customActions));closeAllManageMenus()}
+function handleBottomSubmit(){if(addMode==='newfolder'){const fIn=document.getElementById('newFolderTitle'),title=fIn.value;if(title==='')return;const id='f_'+Date.now();foldersData.push({id,title,color:newFolderColor});localStorage.setItem('calc_folders',JSON.stringify(foldersData));openFolders[id]=true;saveOpenFolders();collapsedSections.folders=false;localStorage.setItem('calc_collapsed_sections',JSON.stringify(collapsedSections));applySectionStates();fIn.value='';renderAll();selectMode('infolder');document.getElementById('targetFolderSelect').value=id;return}const nIn=document.getElementById('newActionName'),cIn=document.getElementById('newActionCmd'),n=nIn.value,c=cIn.value;if(n===''&&c==='')return;if(addMode==='infolder'){const fid=document.getElementById('targetFolderSelect').value;if(!fid)return;customActions.push({name:n===''?c:n,command:c===''?n:c,block:'folder',folderId:fid});openFolders[fid]=true;saveOpenFolders();collapsedSections.folders=false}else{customActions.push({name:n===''?c:n,command:c===''?n:c,block:addMode,folderId:null});collapsedSections[addMode]=false}localStorage.setItem('calc_collapsed_sections',JSON.stringify(collapsedSections));applySectionStates();localStorage.setItem('calc_custom_actions',JSON.stringify(customActions));nIn.value='';cIn.value='';renderAll()}
+function copyActionChip(chipEl,i,cmdText){writeToClipboard(cmdText);clearTimeout(actionCopyTimers[i]);chipEl.dataset.copyText=chipEl.offsetWidth<95?'✓':'Скопировано!';chipEl.classList.add('copied');actionCopyTimers[i]=setTimeout(()=>{chipEl.classList.remove('copied')},1200)}
+function exportBackup(){const payload=JSON.stringify({tabs:tabsData,folders:foldersData,actions:customActions});writeToClipboard(payload);const btn=document.getElementById('btnExportData');btn.classList.add('ok');btn.textContent='Скопировано!';setTimeout(()=>{btn.classList.remove('ok');btn.textContent='Экспорт (копировать)'},1500)}
+function importBackup(){const txt=document.getElementById('importTextarea').value.trim(),btn=document.getElementById('btnApplyImport');if(!txt)return;try{const d=JSON.parse(txt);if(Array.isArray(d.tabs)&&d.tabs.length>=2){tabsData=d.tabs;localStorage.setItem('calc_top_tabs',JSON.stringify(tabsData))}if(Array.isArray(d.folders)){foldersData=d.folders;localStorage.setItem('calc_folders',JSON.stringify(foldersData))}if(Array.isArray(d.actions)){customActions.length=0;d.actions.forEach(x=>customActions.push(x));localStorage.setItem('calc_custom_actions',JSON.stringify(customActions))}renderTabs();renderAll();document.getElementById('importTextarea').value='';btn.textContent='Готово!';setTimeout(()=>{btn.textContent='Загрузить данные';document.getElementById('importArea').classList.remove('open')},1200)}catch(e){btn.textContent='Ошибка формата!';setTimeout(()=>{btn.textContent='Загрузить данные'},1500)}}
+const bottomBox=document.querySelector('.add-action-wrapper');bottomBox.addEventListener('pointerdown',()=>bottomBox.classList.add('glow'));bottomBox.addEventListener('focusin',()=>bottomBox.classList.add('glow'));document.addEventListener('pointerdown',e=>{if(!bottomBox.contains(e.target))bottomBox.classList.remove('glow')});
+applySectionStates();
+renderFaq();
+renderTabs();
+renderAll();
+</script>
+</body>
+</html>
